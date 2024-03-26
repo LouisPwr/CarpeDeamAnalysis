@@ -1,0 +1,546 @@
+import glob
+import pandas as pd
+from snakemake.utils import validate, min_version
+import numpy as np
+import itertools
+
+
+def get_md5sum(x):
+    import hashlib
+
+    return hashlib.md5(x.encode("utf-8")).hexdigest()[:10]
+
+
+"""
+Original Snakemake Workflow Author: A. Fernandez-Guerra (Lundbeck Foundation GeoGenetics Centre)
+Adapted and Modified By: Louis Kraft (DTU Denmark - Section of Bioinformatics)
+Aim: Assembly evaluation
+Run: snakemake -s Snakefile
+"""
+#
+##### set minimum snakemake version #####
+min_version("6.0.0")
+
+configfile: "config/config.yaml"
+report: "report/workflow.rst"
+
+# This should be placed in the Snakefile.
+
+"""
+Working directory
+"""
+
+workdir: config["wdir"]
+
+# message("The current working directory is " + WDIR)
+
+"""
+ The list of samples to be processed
+"""
+
+# Check if config["rename_reads"] exists. If not, set it to False.
+if "rename_reads" not in config:
+    config["rename_reads"] = True
+elif config["rename_reads"] == "":
+    config["rename_reads"] = True
+
+if not isinstance(config["rename_reads"], bool):
+    raise ValueError("The parameter rename_reads only can be 'True' or 'False'")
+    exit(1)
+
+sample_table_read = pd.read_table(
+    config["sample_file_read"], sep="\t", lineterminator="\n"
+)
+
+# let's check that the basic columns are present
+if not all(item in sample_table_read.columns for item in ["label", "file"]):
+    raise ValueError("The sample table must contain the columns 'label' and 'file'")
+    exit(1)
+
+if not "libprep" in sample_table_read.columns:
+    sample_table_read["libprep"] = "double"
+
+sample_table_read = sample_table_read.drop_duplicates(
+    subset="label", keep="first", inplace=False
+)
+sample_table_read = sample_table_read.dropna()
+
+if not "short_label" in sample_table_read.columns:
+    sample_table_read["short_label"] = sample_table_read.apply(
+        lambda row: get_md5sum(row.label), axis=1
+    )
+
+# Check if damage profile is provided, if not set it to ""
+if not "damage" in sample_table_read.columns:
+    sample_table_read["damage"] = ""
+
+sample_table_read.set_index("short_label", inplace=True)
+sample_label_dict_read = sample_table_read.to_dict()["label"]
+sample_label_read = sample_table_read.index.values
+
+megahit_configs = [*config["megahit_config"]]
+penguin_configs = [*config["penguin_config"]]
+carpedeam_configs = [*config["carpedeam_config"]]
+spades_configs = [*config["spades_config"]]
+
+
+rule all:
+    input:
+        done_initial_stats=expand(
+            config["rdir"] + "/stats/{smp}.stats-initial.txt", smp=sample_label_read
+        ),
+        done_renamed_reads=expand(
+            config["rdir"] + "/read-renamed/{smp}.fq.gz",
+            smp=sample_label_read,
+        ),
+        done_assm_input_1=expand(
+            f'{config["rdir"]}/assembly-input-1/{{smp}}.{{assm_input_1}}.fastq.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+        ),
+        done_assm_input_2=expand(
+            f'{config["rdir"]}/assembly-input-2/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.fastq.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+        ),
+
+# CARPEDEAM
+        # CARPEDEAM assembly
+        done_contigs_carpedeam=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_confs_carpedeam=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        # CARPEDEAM quast
+        done_assembly_validation_carpedeam=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.report.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_quast_carpedeam_summary=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.carpedeam-assembly-quast.report.tsv.gz',
+            smp=sample_label_read,
+        ),
+        # CARPEDEAM mapping
+        done_carpedeam_sorted_bam=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.carpedeam.{{config}}.sorted.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_carpedeam_flagstats=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.carpedeam.{{config}}.stats.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM minimap
+        done_carpedeam_minimap_sorted_sam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.carpedeam.{{config}}.sorted.sam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_carpedeam_minimap_sortedmd_bam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.carpedeam.{{config}}.sorted_md.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM mmseqs
+        done_carpedeam_mmseqs_tsv=expand(
+            f'{config["rdir"]}/assembly-mmseqs/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.carpedeam.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM metadmg
+        done_carpedeam_metadmg=expand(
+            f'{config["rdir"]}/assembly-metadmg/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.metadmg.carpedeam.{{config}}.dfit.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM sense
+        done_carpedeam_sense=expand(
+            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.carpedeam.{{config}}/dummy.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM Prodigal
+        done_assembly_taxonomy_faa_carpedeam=expand(
+            f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.carpedeam.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_assembly_taxonomy_fna_carpedeam=expand(
+            f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.carpedeam.{{config}}.fna',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        # CARPEDEAM easytaxonomy
+        done_assembly_easytaxonomy_carpedeam=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+# PENGUIN
+        # PENGUIN assembly
+        done_contigs_penguin=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        done_confs_penguin=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        # PENGUIN quast
+        done_assembly_validation_quast_penguin=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.report.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        done_quast_penguin_summary=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.penguin-assembly-quast.report.tsv.gz',
+            smp=sample_label_read,
+        ),
+
+        # PENGUIN mapping
+        done_penguin_sorted_bam=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.penguin.{{config}}.sorted.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        done_penguin_flagstats=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.penguin.{{config}}.stats.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN minimap
+        done_penguin_minimap_sorted_sam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.penguin.{{config}}.sorted.sam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        done_penguin_minimap_sortedmd_bam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.penguin.{{config}}.sorted_md.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN sense
+        done_penguin_sense=expand(
+            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.penguin.{{config}}/dummy.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN Prodigal
+        done_assembly_taxonomy_faa_penguin=expand(
+            f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.penguin.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        # PENGUIN easytaxonomy
+        done_assembly_easytaxonomy_penguin=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.penguin.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+# MEGAHIT
+        # MEGAHIT assembly
+        done_contigs_megahit=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.megahit.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        done_confs_megahit=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.megahit.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        # MEGAHIT quast
+        done_assembly_validation_quast_megahit=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.megahit.{{config}}.report.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        done_quast_megahit_summary=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.megahit-assembly-quast.report.tsv.gz',
+            smp=sample_label_read,
+        ),
+
+        # MEGAHIT mapping
+        done_megahit_sorted_bam=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.megahit.{{config}}.sorted.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        done_megahit_flagstats=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.megahit.{{config}}.stats.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT minimap
+        done_megahit_minimap_sorted_sam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.megahit.{{config}}.sorted.sam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        done_megahit_minimap_sortedmd_bam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.megahit.{{config}}.sorted_md.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT sense
+        done_megahit_sense=expand(
+            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.megahit.{{config}}/dummy.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT metadmg
+        done_megahit_metadmg=expand(
+            f'{config["rdir"]}/assembly-metadmg/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.metadmg.megahit.{{config}}.dfit.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT Prodigal
+        done_assembly_taxonomy_faa_megahit=expand(
+            f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.megahit.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        # MEGAHIT easytaxonomy
+        done_assembly_easytaxonomy_megahit=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+# SPADES
+        # SPADES assembly
+        done_contigs_spades=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.spades.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        done_confs_spades=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.spades.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # SPADES quast
+        done_assembly_validation_quast_spades=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.spades.{{config}}.report.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        done_quast_spades_summary=expand(
+            f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.spades-assembly-quast.report.tsv.gz',
+            smp=sample_label_read,
+        ),
+
+        # SPADES mapping
+        done_spades_sorted_bam=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.spades.{{config}}.sorted.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        done_spades_flagstats=expand(
+            f'{config["rdir"]}/assembly-mapping/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mapping.spades.{{config}}.stats.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES minimap
+        done_spades_minimap_sorted_sam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.spades.{{config}}.sorted.sam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        done_spades_minimap_sortedmd_bam=expand(
+            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.spades.{{config}}.sorted_md.bam',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES sense
+        done_spades_sense=expand(
+            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.spades.{{config}}/dummy.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES metadmg
+        done_spades_metadmg=expand(
+            f'{config["rdir"]}/assembly-metadmg/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.metadmg.spades.{{config}}.dfit.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES Prodigal
+        done_assembly_taxonomy_faa_spades=expand(
+            f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.spades.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # SPADES easytaxonomy
+        done_assembly_easytaxonomy_spades=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.spades.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+
+"""
+##### load rules #####
+"""
+
+
+include: "rules/read-rename.smk"
+include: "rules/assembly-input-1.smk"
+include: "rules/assembly-input-2.smk"
+
+include: "rules/assembly-megahit.smk"
+include: "rules/assembly-penguin.smk"
+include: "rules/assembly-carpedeam.smk"
+include: "rules/assembly-spades.smk"
+
+include: "rules/assembly-evaluation-quast-megahit.smk"
+include: "rules/assembly-evaluation-quast-penguin.smk"
+include: "rules/assembly-evaluation-quast-carpedeam.smk"
+include: "rules/assembly-evaluation-quast-spades.smk"
+
+include: "rules/assembly-evaluation-mapping-carpedeam.smk"
+include: "rules/assembly-evaluation-mapping-penguin.smk"
+include: "rules/assembly-evaluation-mapping-megahit.smk"
+include: "rules/assembly-evaluation-mapping-spades.smk"
+
+include: "rules/assembly-evaluation-minimap-carpedeam.smk"
+include: "rules/assembly-evaluation-minimap-penguin.smk"
+include: "rules/assembly-evaluation-minimap-megahit.smk"
+include: "rules/assembly-evaluation-minimap-spades.smk"
+
+include: "rules/assembly-sense-carpedeam.smk"
+include: "rules/assembly-sense-penguin.smk"
+include: "rules/assembly-sense-megahit.smk"
+include: "rules/assembly-sense-spades.smk"
+
+include: "rules/assembly-evaluation-metadmg-carpedeam.smk"
+include: "rules/assembly-evaluation-metadmg-penguin.smk"
+include: "rules/assembly-evaluation-metadmg-megahit.smk"
+include: "rules/assembly-evaluation-metadmg-spades.smk"
+
+include: "rules/assembly-taxonomy-evaluation-megahit-easyworkflow.smk"
+include: "rules/assembly-taxonomy-evaluation-spades-easyworkflow.smk"
+include: "rules/assembly-taxonomy-evaluation-carpedeam-easyworkflow.smk"
+include: "rules/assembly-taxonomy-evaluation-penguin-easyworkflow.smk"
+
+include: "rules/assembly-evaluation-genes-megahit.smk"
+include: "rules/assembly-evaluation-genes-spades.smk"
+include: "rules/assembly-evaluation-genes-carpedeam.smk"
+include: "rules/assembly-evaluation-genes-penguin.smk"
