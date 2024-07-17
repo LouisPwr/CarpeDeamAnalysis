@@ -15,17 +15,17 @@ tax_db: "database to search against e.g. gtdb"
 ###############################################################################
 #Add binary paths
 seqkit_bin: "seqkit"
-mmseqs_bin: "/vol/cloud/louis/apps/MMseqs2/build/bin/mmseqs"
-penguin_bin: "/vol/cloud/louis/apps/plass/build/bin/plass"
-carpedeam2_bin: "/vol/cloud/louis/apps/CarpeDeam7/build/bin/plass"
-megahit_bin: "/vol/cloud/louis/apps/MEGAHIT-1.2.9-Linux-x86_64-static/bin/megahit"
-spades_bin: "/vol/cloud/louis/apps/SPAdes-3.15.5-Linux/bin/metaspades.py"
-minimap2_bin: /vol/cloud/louis/apps/minimap2-2.26_x64-linux/minimap2
+mmseqs_bin: "/path/to/MMseqs2/build/bin/mmseqs"
+penguin_bin: "/path/to/plass/build/bin/plass"
+carpedeam2_bin: "/path/to/CarpeDeam7/build/bin/plass"
+megahit_bin: "/path/to/MEGAHIT-1.2.9-Linux-x86_64-static/bin/megahit"
+spades_bin: "/path/to/SPAdes-3.15.5-Linux/bin/metaspades.py"
 quast_bin: "metaquast.py"
 prodigal_bin: "prodigal"
+prokka_bin: "prokka"
 bowtie2_bin: "bowtie2"
 bowtie2_build_bin: "bowtie2-build"
-samtools_bin: "/vol/cloud/louis/apps/samtools-1.19/bin/samtools"
+samtools_bin: "/path/to/samtools-1.19/bin/samtools"
 
 
 # Program parameters
@@ -54,7 +54,8 @@ penguin_config:
 # CARPEDEAM
 carpedeam2_threads: 32
 carpedeam2_config:
-  config0: '--remove-tmp-files 1 --max-seq-len 100000000 --min-contig-len 500 -e 0.001 --min-length 10 --alph-size nucl:4,aa:13 --split-memory-limit 200G --num-iterations nucl:9,aa:1 -k nucl:20,aa:11 --clust-min-seq-id 0.97 --clust-min-cov 0.97 --min-seq-id nucl:0.9,aa:0.95 --kmer-per-seq-scale 0.3 --include-only-extendable 0 --ignore-multi-kmer 1 --min-ryseq-id 0.99 --min-merge-seq-id 0.985 --correction-min-ry-seqid 0.999 --ry-size-matcher 22 --clust-min-ry-seq-id 0.99 --correction-min-seqid 0.9 --ext-random-align 0.85 --likelihood-ratio-threshold 0.95 --num-iter-reads-only 3'
+  configSafe: '--remove-tmp-files 1 --max-seq-len 100000000 --min-contig-len 500 -e 0.001 --min-length 10 --alph-size nucl:4,aa:13 --split-memory-limit 200G --num-iterations nucl:14,aa:1 -k nucl:20,aa:11 --clust-min-seq-id 0.98 --clust-min-cov 0.97 --min-seq-id nucl:0.9,aa:0.95 --min-ryseq-id 0.99 --min-merge-seq-id 0.99 --min-seqid-corr-contigs 0.9  --min-ryseqid-corr-reads 0.99 --min-seqid-corr-reads 0.9 --ext-random-align 0.85 --likelihood-ratio-threshold 0.5 --num-iter-reads-only 5 --excess-penalty 0.0625 --unsafe 0 --k-ancient-contigs 22 --k-ancient-reads 20'
+  configUnsafe: '--remove-tmp-files 1 --max-seq-len 100000000 --min-contig-len 500 -e 0.001 --min-length 10 --alph-size nucl:4,aa:13 --split-memory-limit 200G --num-iterations nucl:14,aa:1 -k nucl:20,aa:11 --clust-min-seq-id 0.98 --clust-min-cov 0.97 --min-seq-id nucl:0.9,aa:0.95 --min-ryseq-id 0.99 --min-merge-seq-id 0.985 --min-seqid-corr-contigs 0.9  --min-ryseqid-corr-reads 0.99 --min-seqid-corr-reads 0.9 --ext-random-align 0.85 --likelihood-ratio-threshold 0.5 --num-iter-reads-only 5 --excess-penalty 0.0625 --unsafe 1 --k-ancient-contigs 22 --k-ancient-reads 20'
 
 assm_input_1: ["raw"]
 assm_input_2: ["raw"]

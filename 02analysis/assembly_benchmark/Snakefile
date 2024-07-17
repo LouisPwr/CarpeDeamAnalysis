@@ -149,43 +149,9 @@ rule all:
             config=carpedeam_configs,
         ),
 
-        # CARPEDEAM minimap
-        done_carpedeam_minimap_sorted_sam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.carpedeam.{{config}}.sorted.sam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=carpedeam_configs,
-        ),
-        done_carpedeam_minimap_sortedmd_bam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.carpedeam.{{config}}.sorted_md.bam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=carpedeam_configs,
-        ),
-
         # CARPEDEAM mmseqs
         done_carpedeam_mmseqs_tsv=expand(
             f'{config["rdir"]}/assembly-mmseqs/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.carpedeam.{{config}}.tsv',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=carpedeam_configs,
-        ),
-
-        # CARPEDEAM metadmg
-        done_carpedeam_metadmg=expand(
-            f'{config["rdir"]}/assembly-metadmg/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.metadmg.carpedeam.{{config}}.dfit.gz',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=carpedeam_configs,
-        ),
-
-        # CARPEDEAM sense
-        done_carpedeam_sense=expand(
-            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.carpedeam.{{config}}/dummy.txt',
             smp=sample_label_read,
             assm_input_1=config["assm_input_1"],
             assm_input_2=config["assm_input_2"],
@@ -214,6 +180,14 @@ rule all:
             assm_input_1=config["assm_input_1"],
             assm_input_2=config["assm_input_2"],
             config=carpedeam_configs,
+        ),
+        # CARPEDEAM Prokka
+        done_assembly_prokka_faa_carpedeam=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.carpedeam2.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.carpedeam2.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam2_configs,
         ),
 
 # PENGUIN
@@ -261,31 +235,6 @@ rule all:
             config=penguin_configs,
         ),
 
-        # PENGUIN minimap
-        done_penguin_minimap_sorted_sam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.penguin.{{config}}.sorted.sam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=penguin_configs,
-        ),
-        done_penguin_minimap_sortedmd_bam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.penguin.{{config}}.sorted_md.bam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=penguin_configs,
-        ),
-
-        # PENGUIN sense
-        done_penguin_sense=expand(
-            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.penguin.{{config}}/dummy.txt',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=penguin_configs,
-        ),
-
         # PENGUIN Prodigal
         done_assembly_taxonomy_faa_penguin=expand(
             f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.penguin.{{config}}.faa',
@@ -297,6 +246,15 @@ rule all:
         # PENGUIN easytaxonomy
         done_assembly_easytaxonomy_penguin=expand(
             f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.penguin.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN Prokka
+        done_assembly_prokka_faa_penguin=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.penguin.{{config}}.faa',
             smp=sample_label_read,
             assm_input_1=config["assm_input_1"],
             assm_input_2=config["assm_input_2"],
@@ -348,40 +306,6 @@ rule all:
             config=megahit_configs,
         ),
 
-        # MEGAHIT minimap
-        done_megahit_minimap_sorted_sam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.megahit.{{config}}.sorted.sam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=megahit_configs,
-        ),
-        done_megahit_minimap_sortedmd_bam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.megahit.{{config}}.sorted_md.bam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=megahit_configs,
-        ),
-
-        # MEGAHIT sense
-        done_megahit_sense=expand(
-            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.megahit.{{config}}/dummy.txt',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=megahit_configs,
-        ),
-
-        # MEGAHIT metadmg
-        done_megahit_metadmg=expand(
-            f'{config["rdir"]}/assembly-metadmg/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.metadmg.megahit.{{config}}.dfit.gz',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=megahit_configs,
-        ),
-
         # MEGAHIT Prodigal
         done_assembly_taxonomy_faa_megahit=expand(
             f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.megahit.{{config}}.faa',
@@ -393,6 +317,15 @@ rule all:
         # MEGAHIT easytaxonomy
         done_assembly_easytaxonomy_megahit=expand(
             f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT Prokka
+        done_assembly_prokka_faa_megahit=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.megahit.{{config}}.faa',
             smp=sample_label_read,
             assm_input_1=config["assm_input_1"],
             assm_input_2=config["assm_input_2"],
@@ -444,40 +377,6 @@ rule all:
             config=spades_configs,
         ),
 
-        # SPADES minimap
-        done_spades_minimap_sorted_sam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.spades.{{config}}.sorted.sam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=spades_configs,
-        ),
-        done_spades_minimap_sortedmd_bam=expand(
-            f'{config["rdir"]}/assembly-minimap/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.minimap.spades.{{config}}.sorted_md.bam',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=spades_configs,
-        ),
-
-        # SPADES sense
-        done_spades_sense=expand(
-            f'{config["rdir"]}/assembly-sense/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.spades.{{config}}/dummy.txt',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=spades_configs,
-        ),
-
-        # SPADES metadmg
-        done_spades_metadmg=expand(
-            f'{config["rdir"]}/assembly-metadmg/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.metadmg.spades.{{config}}.dfit.gz',
-            smp=sample_label_read,
-            assm_input_1=config["assm_input_1"],
-            assm_input_2=config["assm_input_2"],
-            config=spades_configs,
-        ),
-
         # SPADES Prodigal
         done_assembly_taxonomy_faa_spades=expand(
             f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.spades.{{config}}.faa',
@@ -489,6 +388,14 @@ rule all:
         # SPADES easytaxonomy
         done_assembly_easytaxonomy_spades=expand(
             f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.spades.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # SPADES Prokka
+        done_assembly_prokka_faa_spades=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.spades.{{config}}.faa',
             smp=sample_label_read,
             assm_input_1=config["assm_input_1"],
             assm_input_2=config["assm_input_2"],
@@ -525,16 +432,6 @@ include: "rules/assembly-evaluation-minimap-penguin.smk"
 include: "rules/assembly-evaluation-minimap-megahit.smk"
 include: "rules/assembly-evaluation-minimap-spades.smk"
 
-include: "rules/assembly-sense-carpedeam.smk"
-include: "rules/assembly-sense-penguin.smk"
-include: "rules/assembly-sense-megahit.smk"
-include: "rules/assembly-sense-spades.smk"
-
-include: "rules/assembly-evaluation-metadmg-carpedeam.smk"
-include: "rules/assembly-evaluation-metadmg-penguin.smk"
-include: "rules/assembly-evaluation-metadmg-megahit.smk"
-include: "rules/assembly-evaluation-metadmg-spades.smk"
-
 include: "rules/assembly-taxonomy-evaluation-megahit-easyworkflow.smk"
 include: "rules/assembly-taxonomy-evaluation-spades-easyworkflow.smk"
 include: "rules/assembly-taxonomy-evaluation-carpedeam-easyworkflow.smk"
@@ -544,3 +441,8 @@ include: "rules/assembly-evaluation-genes-megahit.smk"
 include: "rules/assembly-evaluation-genes-spades.smk"
 include: "rules/assembly-evaluation-genes-carpedeam.smk"
 include: "rules/assembly-evaluation-genes-penguin.smk"
+
+include: "rules/assembly-evaluation-prokka-spades.smk"
+include: "rules/assembly-evaluation-prokka-megahit.smk"
+include: "rules/assembly-evaluation-prokka-carpedeam2.smk"
+include: "rules/assembly-evaluation-prokka-penguin.smk"

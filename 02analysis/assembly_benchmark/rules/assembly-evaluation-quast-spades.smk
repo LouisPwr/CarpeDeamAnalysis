@@ -22,7 +22,7 @@ rule assembly_evaluation_quast_spades:
     benchmark:
         f'{config["rdir"]}/benchmarks/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.spades.{{config}}.bmk'
     conda:
-        "/vol/cloud/louis/miniconda3/envs/metaquast"
+        "miniconda3/envs/metaquast"
     message:
         """--- Evaluating spades assemblies. """
     shell:

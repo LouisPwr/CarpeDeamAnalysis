@@ -1,8 +1,8 @@
-rule assembly_evaluation_quast_carpedeam:
+rule assembly_evaluation_quast_penguin:
     input:
-        contigs=f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.fasta',
+        contigs=f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.fasta',
     output:
-        report=f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.report.tsv',
+        report=f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.report.tsv',
     wildcard_constraints:
         assm_input_1="\w+",
         assm_input_2="\w+",
@@ -14,17 +14,17 @@ rule assembly_evaluation_quast_carpedeam:
         reference=(
             lambda wildcards: f'{config["ref_folder"]}/{sample_table_read.reference[wildcards.smp]}'
         ),
-        odir=f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}',
+        odir=f'{config["rdir"]}/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}',
         wdir=config["wdir"],
         rdir=config["rdir"] + "/assembly-evaluation-quast",
     log:
-        f'{config["rdir"]}/logs/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.log',
+        f'{config["rdir"]}/logs/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.log',
     benchmark:
-        f'{config["rdir"]}/benchmarks/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.bmk'
+        f'{config["rdir"]}/benchmarks/assembly-evaluation-quast/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.bmk'
     conda:
-        "/vol/cloud/louis/miniconda3/envs/metaquast"
+        "miniconda3/envs/metaquast"
     message:
-        """--- Evaluating carpedeam assemblies. """
+        """--- Evaluating penguin assemblies. """
     shell:
         """
         cd {params.rdir} || {{ echo "Cannot change dir"; exit 1; }}
