@@ -190,6 +190,69 @@ rule all:
             config=carpedeam2_configs,
         ),
 
+        # CARPEDEAM linclust
+        done_carpedeam_linclust=expand(
+            f'{config["rdir"]}/assembly-linclust/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}_rep_seq.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM mapping
+        done_carpedeam_map=expand(
+            f'{config["rdir"]}/assembly-map/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM mmseqsDB
+        done_carpedeam_mmseqsDB=expand(
+            f'{config["rdir"]}/assembly-mmseqsDB/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM miniprot
+        done_carpedeam_miniprot=expand(
+            f'{config["rdir"]}/assembly-miniprot/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}.paf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM skani
+        done_carpedeam_skani=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.carpedeam.{{config}}.ani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_carpedeam_skani2=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.carpedeam.{{config}}.search-skani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+        # CARPEDEAM map protein
+        done_carpedeam_map_protein=expand(
+            f'{config["rdir"]}/assembly-map-protein/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.carpedeam.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+
+
 # PENGUIN
         # PENGUIN assembly
         done_contigs_penguin=expand(
@@ -260,6 +323,68 @@ rule all:
             assm_input_2=config["assm_input_2"],
             config=penguin_configs,
         ),
+
+        # PENGUIN linclust
+        done_penguin_linclust=expand(
+            f'{config["rdir"]}/assembly-linclust/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}_rep_seq.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN mapping
+        done_penguin_map=expand(
+            f'{config["rdir"]}/assembly-map/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN mmseqsDB
+        done_penguin_mmseqsDB=expand(
+            f'{config["rdir"]}/assembly-mmseqsDB/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN miniprot
+        done_penguin_miniprot=expand(
+            f'{config["rdir"]}/assembly-miniprot/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}.paf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN skani
+        done_penguin_skani=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.penguin.{{config}}.ani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        done_penguin_skani2=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.penguin.{{config}}.search-skani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+        # PENGUIN map protein
+        done_penguin_map_protein=expand(
+            f'{config["rdir"]}/assembly-map-protein/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.penguin.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
 
 # MEGAHIT
         # MEGAHIT assembly
@@ -332,6 +457,68 @@ rule all:
             config=megahit_configs,
         ),
 
+        # MEGAHIT linclust
+        done_megahit_linclust=expand(
+            f'{config["rdir"]}/assembly-linclust/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}_rep_seq.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT mapping
+        done_megahit_map=expand(
+            f'{config["rdir"]}/assembly-map/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT mmseqsDB
+        done_megahit_mmseqsDB=expand(
+            f'{config["rdir"]}/assembly-mmseqsDB/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT miniprot
+        done_megahit_miniprot=expand(
+            f'{config["rdir"]}/assembly-miniprot/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}.paf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT skani
+        done_megahit_skani=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.megahit.{{config}}.ani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        done_megahit_skani2=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.megahit.{{config}}.search-skani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+        # MEGAHIT map protein
+        done_megahit_map_protein=expand(
+            f'{config["rdir"]}/assembly-map-protein/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.megahit.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+
 # SPADES
         # SPADES assembly
         done_contigs_spades=expand(
@@ -402,11 +589,72 @@ rule all:
             config=spades_configs,
         ),
 
+        # SPADES linclust
+        done_spades_linclust=expand(
+            f'{config["rdir"]}/assembly-linclust/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}_rep_seq.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES mapping
+        done_spades_map=expand(
+            f'{config["rdir"]}/assembly-map/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES mmseqsDB
+        done_spades_mmseqsDB=expand(
+            f'{config["rdir"]}/assembly-mmseqsDB/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES miniprot
+        done_spades_miniprot=expand(
+            f'{config["rdir"]}/assembly-miniprot/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}.paf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES skani
+        done_spades_skani=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.spades.{{config}}.ani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        done_spades_skani2=expand(
+            f'{config["rdir"]}/assembly-skani/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.spades.{{config}}.search-skani.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+        # SPADES map protein
+        done_spades_map_protein=expand(
+            f'{config["rdir"]}/assembly-map-protein/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.spades.{{config}}_all.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+
 
 """
 ##### load rules #####
 """
-
 
 include: "rules/read-rename.smk"
 include: "rules/assembly-input-1.smk"
@@ -446,3 +694,34 @@ include: "rules/assembly-evaluation-prokka-spades.smk"
 include: "rules/assembly-evaluation-prokka-megahit.smk"
 include: "rules/assembly-evaluation-prokka-carpedeam2.smk"
 include: "rules/assembly-evaluation-prokka-penguin.smk"
+
+include: "assembly-evaluation-linclust-carpedeam.smk"
+include: "assembly-evaluation-linclust-penguin.smk"
+include: "assembly-evaluation-linclust-megahit.smk"
+include: "assembly-evaluation-linclust-spades.smk"
+
+include: "assembly-evaluation-map-carpedeam.smk"
+include: "assembly-evaluation-map-penguin.smk"
+include: "assembly-evaluation-map-megahit.smk"
+include: "assembly-evaluation-map-spades.smk"
+
+include: "assembly-evaluation-mmseqsDB-carpedeam.smk"
+include: "assembly-evaluation-mmseqsDB-penguin.smk"
+include: "assembly-evaluation-mmseqsDB-megahit.smk"
+include: "assembly-evaluation-mmseqsDB-spades.smk"
+
+include: "assembly-evaluation-miniprot-carpedeam.smk"
+include: "assembly-evaluation-miniprot-penguin.smk"
+include: "assembly-evaluation-miniprot-megahit.smk"
+include: "assembly-evaluation-miniprot-spades.smk"
+
+include: "assembly-evaluation-skani-carpedeam.smk"
+include: "assembly-evaluation-skani-penguin.smk"
+include: "assembly-evaluation-skani-megahit.smk"
+include: "assembly-evaluation-skani-spades.smk"
+
+include: "assembly-evaluation-map-protein-carpedeam.smk"
+include: "assembly-evaluation-map-protein-penguin.smk"
+include: "assembly-evaluation-map-protein-megahit.smk"
+include: "assembly-evaluation-map-protein-spades.smk"
+

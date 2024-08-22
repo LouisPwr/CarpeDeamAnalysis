@@ -1,8 +1,8 @@
-rule assembly_easytaxonomy_evaluation_carpedeam2:
+rule assembly_easytaxonomy_evaluation_carpedeam:
     input:
-        contigs=f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.carpedeam2.{{config}}.faa',
+        contigs=f'{config["rdir"]}/assembly-genes-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.genes.carpedeam.{{config}}.faa',
     output:
-        mmseqs_tophit_aln=f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam2.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam2.{{config}}_tophit_aln'
+        mmseqs_tophit_aln=f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}_tophit_aln'
     wildcard_constraints:
         assm_input_1="\w+",
         assm_input_2="\w+",
@@ -13,15 +13,15 @@ rule assembly_easytaxonomy_evaluation_carpedeam2:
         wdir=config["wdir"],
         rdir=config["rdir"] + "/assembly-easytaxonomy-eval",
         taxonomy_db=config["tax_db"],
-        mmseqs_results_easy=f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam2.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam2.{{config}}'
+        mmseqs_results_easy=f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}'
     log:
-        mmseqs_log=f'{config["rdir"]}/logs/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam2.{{config}}.log'
+        mmseqs_log=f'{config["rdir"]}/logs/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}.log'
     benchmark:
-        f'{config["rdir"]}/benchmarks/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam2.{{config}}.bmk'
+        f'{config["rdir"]}/benchmarks/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}.bmk'
     conda:
         "miniconda3/envs/taxonomy"
     message:
-        """--- carpedeam2 assembly taxonomic profiling. """
+        """--- carpedeam assembly taxonomic profiling. """
     shell:
         """
         cd {params.rdir} || {{ echo "Cannot change dir"; exit 1; }}
