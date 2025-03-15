@@ -1,0 +1,37 @@
+rule assembly_easytaxonomy_evaluation_megahit:
+    input:
+        contigs=f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.megahit.{{config}}.fasta',
+    output:
+        mmseqs_tophit_aln=f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}_tophit_aln'
+    wildcard_constraints:
+        assm_input_1="\w+",
+        assm_input_2="\w+",
+        config="\w+",
+    threads: config["threads_32"]
+    params:
+        mmseqs_bin=config["mmseqs_bin"],
+        wdir=config["wdir"],
+        rdir=config["rdir"] + "/assembly-easytaxonomy-eval",
+        taxonomy_db=config["taxdb"],
+        mmseqs_results_easy=f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}'
+    log:
+        mmseqs_log=f'{config["rdir"]}/logs/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}.log'
+    benchmark:
+        f'{config["rdir"]}/benchmarks/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}.bmk'
+    message:
+        """--- megahit assembly taxonomic profiling. """
+    shell:
+        """
+        cd {params.rdir} || {{ echo "Cannot change dir"; exit 1; }}
+
+        NN=$(grep -c '>' {input.contigs} || [[ $? == 1 ]])
+
+        if [[ ${{NN}} -eq 0 ]]; then
+            touch {output.mmseqs_tophit_aln}
+            exit 0
+        fi
+        
+        {params.mmseqs_bin} easy-taxonomy {input.contigs} {params.taxonomy_db} {params.mmseqs_results_easy} {params.rdir}/tmp --split-memory-limit 300G --format-output query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,qlen,tlen,qcov,tcov >> {log.mmseqs_log} 2>&1
+
+        cd {params.wdir} || {{ echo "Cannot change dir"; exit 1; }}
+        """

@@ -54,8 +54,8 @@ penguin_config:
 # CARPEDEAM
 carpedeam2_threads: 32
 carpedeam2_config:
-  configSafe: '--remove-tmp-files 1 --max-seq-len 100000000 --min-contig-len 500 -e 0.001 --min-length 10 --alph-size nucl:4,aa:13 --split-memory-limit 200G --num-iterations nucl:14,aa:1 -k nucl:20,aa:11 --clust-min-seq-id 0.98 --clust-min-cov 0.97 --min-seq-id nucl:0.9,aa:0.95 --min-ryseq-id 0.99 --min-merge-seq-id 0.99 --min-seqid-corr-contigs 0.9  --min-ryseqid-corr-reads 0.99 --min-seqid-corr-reads 0.9 --ext-random-align 0.85 --likelihood-ratio-threshold 0.5 --num-iter-reads-only 5 --excess-penalty 0.0625 --unsafe 0 --k-ancient-contigs 22 --k-ancient-reads 20'
-  configUnsafe: '--remove-tmp-files 1 --max-seq-len 100000000 --min-contig-len 500 -e 0.001 --min-length 10 --alph-size nucl:4,aa:13 --split-memory-limit 200G --num-iterations nucl:14,aa:1 -k nucl:20,aa:11 --clust-min-seq-id 0.98 --clust-min-cov 0.97 --min-seq-id nucl:0.9,aa:0.95 --min-ryseq-id 0.99 --min-merge-seq-id 0.985 --min-seqid-corr-contigs 0.9  --min-ryseqid-corr-reads 0.99 --min-seqid-corr-reads 0.9 --ext-random-align 0.85 --likelihood-ratio-threshold 0.5 --num-iter-reads-only 5 --excess-penalty 0.0625 --unsafe 1 --k-ancient-contigs 22 --k-ancient-reads 20'
+  configSafe: '--unsafe 0'
+  configUnsafe: '--unsafe 1'
 
 assm_input_1: ["raw"]
 assm_input_2: ["raw"]

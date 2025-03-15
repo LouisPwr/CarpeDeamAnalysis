@@ -1,0 +1,384 @@
+import glob
+import pandas as pd
+from snakemake.utils import validate, min_version
+import numpy as np
+import itertools
+
+#
+##### set minimum snakemake version #####
+min_version("6.0.0")
+
+configfile: "config/config.yaml"
+report: "report/workflow.rst"
+
+# This should be placed in the Snakefile.
+
+"""
+Working directory
+"""
+
+workdir: config["wdir"]
+
+DUPS = ["rmdup"]
+
+"""
+ The list of samples to be processed
+"""
+
+# Check if config["rename_reads"] exists. If not, set it to False.
+if "rename_reads" not in config:
+    config["rename_reads"] = True
+elif config["rename_reads"] == "":
+    config["rename_reads"] = True
+
+if not isinstance(config["rename_reads"], bool):
+    raise ValueError("The parameter rename_reads only can be 'True' or 'False'")
+    exit(1)
+
+sample_table_read = pd.read_table(
+    config["sample_file_read"], sep="\t", lineterminator="\n"
+)
+
+# let's check that the basic columns are present
+if not all(item in sample_table_read.columns for item in ["label", "file"]):
+    raise ValueError("The sample table must contain the columns 'label' and 'file'")
+    exit(1)
+
+# By default all studies are treated as ancient
+if not "study_type" in sample_table_read.columns:
+    sample_table_read["study_type"] = "ancient"
+
+# Check if element in column is different from list, if not exit with error
+if not all(item in ["ancient", "modern"] for item in sample_table_read.study_type):
+    raise ValueError("The column 'study_type' must contain only 'ancient' or 'modern'")
+    exit(1)
+
+# If extend_reads is not present, set it to True
+extend_reads_cond = [True, False, "auto"]
+if "extend_reads" in config:
+    if not config["extend_reads"] in extend_reads_cond:
+        raise ValueError(
+            "The parameter extend_reads only can be 'True', 'False' or 'None'"
+        )
+        exit(1)
+else:
+    config["extend_reads"] = True
+
+# Let's check if we extend or not based on the column study_type
+if config["extend_reads"] is True:
+    sample_table_read["extend_reads"] = "TRUE"
+elif config["extend_reads"] is False:
+    sample_table_read["extend_reads"] = "FALSE"
+else:
+    sample_table_read["extend_reads"] = np.where(
+        sample_table_read["study_type"] == "ancient", "TRUE", "FALSE"
+    )
+
+if not "libprep" in sample_table_read.columns:
+    sample_table_read["libprep"] = "double"
+
+sample_table_read = sample_table_read.drop_duplicates(
+    subset="label", keep="first", inplace=False
+)
+sample_table_read = sample_table_read.dropna()
+
+if not "short_label" in sample_table_read.columns:
+    sample_table_read["short_label"] = sample_table_read.apply(
+        lambda row: row.label, axis=1
+    )
+
+# Check if damage profile is provided, if not set it to ""
+if not "damage" in sample_table_read.columns:
+    sample_table_read["damage"] = ""
+
+sample_table_read.set_index("short_label", inplace=True)
+sample_label_dict_read = sample_table_read.to_dict()["label"]
+sample_label_read = sample_table_read.index.values
+
+megahit_configs = [*config["megahit_config"]]
+carpedeam_configs = [*config["carpedeam_config"]]
+spades_configs = [*config["spades_config"]]
+penguin_configs = [*config["penguin_config"]]
+
+
+
+rule all:
+    input:
+        done_trim_and_merge=expand(
+            config["rdir"] + "/reads_merged/{smp}.merge.fq.gz", smp=sample_label_read
+        ),
+        done_sana1=expand(
+            config["rdir"] + "/reads_paired/{smp}_R1.sana.paired.fq.gz", smp=sample_label_read
+        ),
+        done_sana2=expand(
+            config["rdir"] + "/reads_paired/{smp}_R2.sana.paired.fq.gz", smp=sample_label_read
+        ),
+        done_initial_stats=expand(
+            config["rdir"] + "/stats/{smp}.stats-initial.txt", smp=sample_label_read
+        ),
+        done_renamed_reads=expand(
+            config["rdir"] + "/read-renamed/{smp}.fq.gz",
+            smp=sample_label_read,
+        ),
+        done_renamed_reads_mapping=expand(
+            config["rdir"] + "/read-renamed/{smp}.mapping.tsv.gz",
+            smp=sample_label_read,
+        ),
+        done_assm_input_1=expand(
+            f'{config["rdir"]}/assembly-input-1/{{smp}}.{{assm_input_1}}.fastq.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+        ),
+        done_stats_assm_input_1=expand(
+            f'{config["rdir"]}/stats/{{smp}}.{{assm_input_1}}.stats.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+        ),
+        done_assm_input_2=expand(
+            f'{config["rdir"]}/assembly-input-2/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.fastq.gz',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+        ),
+        done_stats_assm_input_2=expand(
+            f'{config["rdir"]}/stats/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.stats.txt',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+        ),
+
+# carpedeam
+        # carpedeam assembly
+        done_contigs_carpedeam=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        done_confs_carpedeam=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.carpedeam.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        # carpedeam mmseqsDB
+        done_carpedeam_mmseqsDB=expand(
+            f'{config["rdir"]}/assembly-mmseqs/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.carpedeam.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        # Carpedeam easytaxonomy
+        done_assembly_easytaxonomy_carpedeam=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.carpedeam.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        # carpdedeam Prokka
+        done_assembly_prokka_faa_carpedeam=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.carpedeam.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.carpedeam.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+        # carpdedeam RNA
+        done_assembly_rna_carpedeam=expand(
+            f'{config["rdir"]}/assembly-rna/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.rna.carpedeam.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=carpedeam_configs,
+        ),
+
+# MEGAHIT
+        # megahit assembly
+        done_contigs_megahit=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.megahit.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        done_confs_megahit=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.megahit.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        # megahit mmseqsDB
+        done_megahit_mmseqsDB=expand(
+            f'{config["rdir"]}/assembly-mmseqs/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.megahit.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        # megahit easytaxonomy
+        done_assembly_easytaxonomy_megahit=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.megahit.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        # megahit Prokka
+        done_assembly_prokka_faa_megahit=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.megahit.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.megahit.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+        # # megahit RNA
+        done_assembly_rna_megahit=expand(
+            f'{config["rdir"]}/assembly-rna/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.rna.megahit.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=megahit_configs,
+        ),
+
+# PENGUIN
+        # penguin assembly
+        done_contigs_penguin=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        done_confs_penguin=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.penguin.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        # penguin mmseqs
+        done_penguin_mmseqs_tsv=expand(
+            f'{config["rdir"]}/assembly-mmseqs/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.penguin.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        # penguin easytaxonomy
+        done_assembly_easytaxonomy_penguin=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.penguin.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        # penguin Prokka
+        done_assembly_prokka_faa_penguin=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.penguin.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.penguin.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+        # penguin RNA
+        done_assembly_rna_penguin=expand(
+            f'{config["rdir"]}/assembly-rna/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.rna.penguin.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=penguin_configs,
+        ),
+
+# SPADES1
+        # spades assembly
+        done_contigs_spades=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.spades.{{config}}.fasta',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        done_confs_spades=expand(
+            f'{config["rdir"]}/assembly/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.assm.spades.{{config}}.conf',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # spades mmseqs
+        done_spades_mmseqs_tsv=expand(
+            f'{config["rdir"]}/assembly-mmseqs/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.mmseqs.spades.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # spades easytaxonomy
+        done_assembly_easytaxonomy_spades=expand(
+            f'{config["rdir"]}/assembly-easytaxonomy-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.easytaxonomy.spades.{{config}}_tophit_aln',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # spades Prokka
+        done_assembly_prokka_faa_spades=expand(
+            f'{config["rdir"]}/assembly-annotation-eval/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.spades.{{config}}/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.proteins.spades.{{config}}.faa',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+        # # spades RNA
+        done_assembly_rna_spades=expand(
+            f'{config["rdir"]}/assembly-rna/{{smp}}.{{assm_input_1}}-{{assm_input_2}}.rna.spades.{{config}}.tsv',
+            smp=sample_label_read,
+            assm_input_1=config["assm_input_1"],
+            assm_input_2=config["assm_input_2"],
+            config=spades_configs,
+        ),
+
+
+
+"""
+##### load rules #####
+"""
+
+
+include: "rules/merge-reads.smk"
+include: "rules/stats-initial.smk"
+include: "rules/read-rename.smk"
+include: "rules/assembly-input-1.smk"
+include: "rules/assembly-input-2.smk"
+include: "rules/assembly-megahit.smk"
+include: "rules/assembly-carpedeam.smk"
+include: "rules/reads-sana.smk"
+include: "rules/assembly-spades.smk"
+include: "rules/assembly-penguin.smk"
+
+include: "rules/assembly-evaluation-mmseqs-carpedeam.smk"
+include: "rules/assembly-evaluation-mmseqs-megahit.smk"
+include: "rules/assembly-evaluation-mmseqs-spades.smk"
+include: "rules/assembly-evaluation-mmseqs-penguin.smk"
+
+include: "rules/assembly-taxonomy-evaluation-megahit-easyworkflow.smk"
+include: "rules/assembly-taxonomy-evaluation-spades-easyworkflow.smk"
+include: "rules/assembly-taxonomy-evaluation-carpedeam-easyworkflow.smk"
+include: "rules/assembly-taxonomy-evaluation-penguin-easyworkflow.smk"
+
+include: "rules/assembly-evaluation-prokka-megahit.smk"
+include: "rules/assembly-evaluation-prokka-carpedeam.smk"
+include: "rules/assembly-evaluation-prokka-penguin.smk"
+include: "rules/assembly-evaluation-prokka-spades.smk"
+
+include: "rules/assembly-rna-carpedeam.smk"
+include: "rules/assembly-rna-megahit.smk"
+include: "rules/assembly-rna-spades.smk"
+include: "rules/assembly-rna-penguin.smk"
+
+
